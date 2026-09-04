@@ -1,0 +1,34 @@
+{
+  "name": "fk-crm",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "node --env-file=.env.local scripts/migrate.mjs up",
+    "db:rollback": "node --env-file=.env.local scripts/migrate.mjs down",
+    "db:seed": "node --env-file=.env.local scripts/migrate.mjs seed"
+  },
+  "dependencies": {
+    "jose": "^6.0.11",
+    "next": "15.5.4",
+    "pg": "^8.16.3",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/pg": "^8.15.4",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.6"
+  }
+}
