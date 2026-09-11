@@ -30,10 +30,9 @@ export function sectionAfterSave(current: SponsorListSection, statusKey: string)
 
 export const SPONSOR_LIST_QUERY_KEYS = ['section', 'q', 'status', 'priority', 'assignee', 'due'] as const;
 
-export function sponsorListUrl(
-  source: string | Record<string, string | undefined>,
-  extra: Record<string, string> = {},
-): string {
+type QuerySource = string | Record<string, string | undefined>;
+
+export function sponsorListQuery(source: QuerySource, extra: Record<string, string> = {}): string {
   const from =
     typeof source === 'string'
       ? new URLSearchParams(source)
@@ -46,7 +45,11 @@ export function sponsorListUrl(
     if (value) query.set(key, value);
   }
   for (const [key, value] of Object.entries(extra)) query.set(key, value);
-  return `/sponzori?${query.toString()}`;
+  return query.toString();
+}
+
+export function sponsorListUrl(source: QuerySource, extra: Record<string, string> = {}): string {
+  return `/sponzori?${sponsorListQuery(source, extra)}`;
 }
 
 export const TASK_VIEWS = ['mine', 'assigned', 'all', 'done'] as const;
