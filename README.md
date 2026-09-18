@@ -51,7 +51,17 @@ Výpis sponzorů má filtry Priorita, Stav, Řešitel, Due date a hledání v n�
 - Migrace jen v `db/migrations/`, číslované `NNN_nazev.sql`, každá s částí `-- down`. `npm run db:rollback` vrátí poslední.
 - Secrets jen v proměnných prostředí, `.env.example` bez hodnot.
 
+## Plánované úlohy
+
+Endpointy v `app/api/cron/*` nejsou za přihlášením (middleware je vynechává), proto každý hned na začátku ověří hlavičku `Authorization: Bearer <CRON_SECRET>` přes `isAuthorizedCron` z `lib/auth.ts`. Plán spouštění se nastavuje v hostingu podle této tabulky.
+
+| Endpoint | Kdy | Co dělá |
+|---|---|---|
+| `GET /api/cron/parovani` | každou hodinu | Nespárované platbě, jejíž VS a částka přesně odpovídají nezaplacenému dokladu, nastaví `matched_invoice_id` a zapíše to do historie sponzora. Ostatní platby nechá nespárované. |
+
+Při přidání nové úlohy doplň řádek do tabulky a případné nové proměnné do `.env.example`.
+
 ## Co zatím chybí
 
 - Zakládání smluv a dokladů v UI (zatím je zakládá účetní mimo CRM).
-- Import výpisů z banky a ruční párování plateb.
+- Import výpisů z banky a ruční párování plateb z fronty.
