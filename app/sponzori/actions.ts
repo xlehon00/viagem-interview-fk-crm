@@ -6,10 +6,17 @@ import { query, transaction } from '@/lib/db';
 import { FormError, parseId, readText } from '@/lib/forms';
 import { parseSponsorSection, sectionAfterSave, sponsorListUrl } from '@/lib/sections';
 import { listActiveUsers, requireUser } from '@/lib/session';
-import { diffSponsorCard, readSponsorForm, type SponsorCardValues } from '@/lib/sponsorCard';
+import {
+  INITIAL_STATUS_KEY,
+  canChangeStatus,
+  diffSponsorCard,
+  readSponsorForm,
+  type SponsorCardValues,
+} from '@/lib/sponsorCard';
 import {
   insertHistory,
   insertSponsor,
+  listStatusTransitions,
   listStatuses,
   lockSponsorCard,
   updateSponsor,
@@ -34,13 +41,17 @@ function requireSponsorId(form: FormData): number {
 }
 
 async function loadCardLookups(values: SponsorCardValues) {
-  const [statuses, users] = await Promise.all([listStatuses(), listActiveUsers()]);
+  const [statuses, transitions, users] = await Promise.all([
+    listStatuses(),
+    listStatusTransitions(),
+    listActiveUsers(),
+  ]);
   const status = statuses.find((item) => item.id === values.statusId);
   if (!status) throw new FormError('Vybraný stav jednání neexistuje.');
   if (values.assigneeId !== null && !users.some((user) => user.id === values.assigneeId)) {
     throw new FormError('Vybraný řešitel nemá přístup do CRM.');
   }
-  return { statuses, users, status };
+  return { statuses, transitions, users, status };
 }
 
 export async function createSponsor(form: FormData) {
@@ -50,6 +61,7 @@ export async function createSponsor(form: FormData) {
   try {
     values = readSponsorForm(form);
     ({ status } = await loadCardLookups(values));
+    if (status.key !== INITIAL_STATUS_KEY) throw new FormError('Nový sponzor začíná ve stavu Kontaktovat.');
   } catch (error) {
     backWithError(form, 'new', error);
   }
@@ -78,19 +90,27 @@ export async function saveSponsor(form: FormData) {
     backWithError(form, detail, error);
   }
 
-  await transaction(async (client) => {
-    const before = await lockSponsorCard(client, sponsorId);
-    if (!before) throw new Error('Sponzor neexistuje nebo byl smazán.');
-    const changes = diffSponsorCard(before, values, {
-      statusName: (id) => lookups.statuses.find((status) => status.id === id)?.name ?? `#${id}`,
-      userName: (id) => lookups.users.find((item) => item.id === id)?.name ?? `#${id}`,
+  try {
+    await transaction(async (client) => {
+      const before = await lockSponsorCard(client, sponsorId);
+      if (!before) throw new FormError('Sponzor neexistuje nebo byl smazán.');
+      const from = lookups.statuses.find((status) => status.id === before.statusId);
+      if (!from || !canChangeStatus(lookups.transitions, from.key, lookups.status.key)) {
+        throw new FormError(`Ze stavu ${from?.name ?? '?'} nejde přejít na stav ${lookups.status.name}.`);
+      }
+      const changes = diffSponsorCard(before, values, {
+        statusName: (id) => lookups.statuses.find((status) => status.id === id)?.name ?? `#${id}`,
+        userName: (id) => lookups.users.find((item) => item.id === id)?.name ?? `#${id}`,
+      });
+      if (changes.length === 0) return;
+      await updateSponsor(client, sponsorId, values);
+      for (const change of changes) {
+        await insertHistory(client, { sponsorId, userId: user.id, ...change });
+      }
     });
-    if (changes.length === 0) return;
-    await updateSponsor(client, sponsorId, values);
-    for (const change of changes) {
-      await insertHistory(client, { sponsorId, userId: user.id, ...change });
-    }
-  });
+  } catch (error) {
+    backWithError(form, detail, error);
+  }
 
   revalidatePath('/sponzori');
   const listQuery = listQueryOf(form);

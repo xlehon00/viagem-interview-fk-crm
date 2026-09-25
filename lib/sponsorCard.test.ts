@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { FormError } from './forms';
-import { diffSponsorCard, dueState, parsePriority, readSponsorForm, type SponsorCardValues } from './sponsorCard';
+import {
+  canChangeStatus,
+  diffSponsorCard,
+  dueState,
+  parsePriority,
+  readSponsorForm,
+  statusOptions,
+  type SponsorCardValues,
+  type StatusTransition,
+} from './sponsorCard';
 
 const card: SponsorCardValues = {
   name: 'Pekárna U Lípy s.r.o.',
@@ -28,6 +37,28 @@ function form(values: Record<string, string>): FormData {
   for (const [key, value] of Object.entries(values)) data.set(key, value);
   return data;
 }
+
+describe('přechody stavů jednání', () => {
+  const transitions: StatusTransition[] = [
+    { fromKey: 'contact', toKey: 'waiting' },
+    { fromKey: 'waiting', toKey: 'sign' },
+    { fromKey: 'sign', toKey: 'agreed' },
+    { fromKey: 'agreed', toKey: 'renewal' },
+  ];
+  const statuses = ['contact', 'waiting', 'sign', 'renewal', 'agreed'].map((key, index) => ({ key, position: index }));
+
+  it('pustí jen povolený další stav nebo ponechání stavu', () => {
+    expect(canChangeStatus(transitions, 'waiting', 'sign')).toBe(true);
+    expect(canChangeStatus(transitions, 'waiting', 'waiting')).toBe(true);
+    expect(canChangeStatus(transitions, 'contact', 'agreed')).toBe(false);
+    expect(canChangeStatus(transitions, 'agreed', 'contact')).toBe(false);
+  });
+
+  it('nabídne aktuální stav a povolené další stavy v pořadí číselníku', () => {
+    expect(statusOptions(statuses, transitions, 'agreed').map((status) => status.key)).toEqual(['renewal', 'agreed']);
+    expect(statusOptions(statuses, transitions, 'contact').map((status) => status.key)).toEqual(['contact', 'waiting']);
+  });
+});
 
 describe('dueState', () => {
   it('rozliší termín po splatnosti, dnešní a budoucí', () => {

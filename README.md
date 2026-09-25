@@ -25,22 +25,22 @@ Testy `npm test`, kontrola typů `npm run typecheck`.
 
 ## Jak je aplikace poskládaná
 
-Menu je po agendách, uvnitř podle fází práce.
+Agendy jsou v horním menu, podsekce vlevo odpovídají fázím práce, správa číselníků je na konci.
 
 - **Sponzoři:** V jednání · Domluveno · Bez zájmu · Přehled · Správa sponzorů · Správa protiplnění · Správa balíčků · Správa období
 - **Úkoly:** Moje · Zadáno ode mě · Všechny · Hotové
 
-Výpis sponzorů má filtry Priorita, Stav, Řešitel, Due date a hledání v názvu, telefonu a e-mailu; řadí se podle priority sestupně. Detail se otevírá jako popup nad výpisem: vlevo formulář karty, vpravo navázané sekce (Protiplnění, Smlouvy, Úkoly), pod tím Historie. Karta se ukládá tlačítkem v patičce.
+Výpis sponzorů (nadpis „Sponzoři: V jednání“) má filtry Priorita, Stav, Řešitel, Due date a hledání v názvu, telefonu a e-mailu; řadí se podle priority sestupně. „Přidat sponzora“ je jen ve V jednání. Klik na řádek otevře detail jako popup ve stylu OP: vlevo formulář karty a pod ním historie, vpravo navázané sekce (Protiplnění, Smlouvy, Úkoly). Karta se ukládá tlačítkem v patičce.
 
 ## Pojmy
 
 - **Sponzor** – karta sponzora: stav jednání, priorita 1–4 (Nízká, Střední, Vysoká, Nejvyšší), due date, zadavatel (kdo kartu založil), řešitel (kdo ji má na starost), IČO, kontakty.
-- **Stav jednání** – číselník `sponsor_statuses` (`key`, `name`, `color`, `position`). V jednání = `contact`, `waiting`, `sign`, `renewal`, `temp_rejected`; Domluveno = `agreed`; Bez zájmu = `rejected`.
-- **Období, balíček, protiplnění** – sezóna (`seasons`), nabídkový balíček pro sezónu (`packages`) a to, co sponzor za podporu dostává (`benefits`, u sponzora `sponsor_benefits`).
-- **Smlouva** a **splátka** – smlouva na období, splátkový kalendář v `installments`.
+- **Stav jednání** – číselník `sponsor_statuses` (`key`, `name`, `color`, `position`). V jednání = `contact`, `waiting`, `sign`, `renewal`, `temp_rejected`; Domluveno = `agreed`; Bez zájmu = `rejected`. Stav se mění jen na povolený další stav podle `sponsor_status_transitions`, nová karta začíná ve stavu Kontaktovat.
+- **Období, balíček, protiplnění** – sezóna (`seasons`), nabídkový balíček pro sezónu (`packages`) a to, co klub sponzorovi poskytuje (`benefits` v kategoriích online, stadion, dresy, matchday, VIP, PR, CSR; u sponzora `sponsor_benefits`).
+- **Smlouva**, **splátka** a **věcné plnění** – smlouva na období, splátkový kalendář v `installments`, co sponzor dává místo peněz v `contracts.in_kind_*`.
 - **Doklad** – zálohová faktura, faktura, daňový doklad, dobropis (`invoices.kind`).
 - **Platba** – pohyb z banky (`bank_payments`, import zatím mimo aplikaci). **Párování** – spárovaná platba má v `bank_payments.matched_invoice_id` doklad, ke kterému patří; nespárované platby čekají ve frontě párování.
-- **Úkol** – řešitel, zadavatel a termín, volitelně navázaný na sponzora.
+- **Úkol** – datum zadání, deadline, zadavatel, jeden nebo více řešitelů (`task_assignees`) a stav v procentech, volitelně navázaný na sponzora.
 - **Historie** – každá změna pole na kartě (kdo, kdy, pole, z čeho na co), založení a smazání karty, nové protiplnění, úkoly a párování plateb.
 
 ## Konvence

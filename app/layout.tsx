@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { Nav } from './Nav';
+import { AgendaNav, SectionNav } from './Nav';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -13,13 +13,16 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="cs">
       <body>
+        <header className="topbar">
+          <Link href="/" className="brand">
+            FK Lipov · CRM
+          </Link>
+          <AgendaNav />
+        </header>
         <div className="shell">
           <aside className="sidebar">
-            <Link href="/" className="brand">
-              FK Lipov · CRM
-            </Link>
             <Suspense fallback={null}>
-              <Nav />
+              <SectionNav />
             </Suspense>
           </aside>
           <main className="content">{children}</main>

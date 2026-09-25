@@ -3,8 +3,8 @@ import { formatDate, formatDateTime, todayIso } from '@/lib/dates';
 import { TASK_VIEW_LABELS, parseTaskView } from '@/lib/sections';
 import { listActiveUsers, requireUser } from '@/lib/session';
 import { dueState } from '@/lib/sponsorCard';
-import { listTasks } from '@/lib/tasks';
-import { addTask, completeTask } from './actions';
+import { TASK_PROGRESS_STEPS, listTasks } from '@/lib/tasks';
+import { addTask, completeTask, setTaskProgress } from './actions';
 
 type SearchParams = { view?: string; error?: string; saved?: string };
 
@@ -18,7 +18,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   return (
     <>
       <div className="page-header">
-        <h1>Úkoly · {TASK_VIEW_LABELS[view]}</h1>
+        <h1>Úkoly: {TASK_VIEW_LABELS[view]}</h1>
       </div>
 
       {params.error && <p className="alert error">{params.error}</p>}
@@ -27,14 +27,14 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
       {view !== 'done' && (
         <form action={addTask} className="inline-form">
           <input name="title" placeholder="Nový úkol" required />
-          <select name="assigneeId" defaultValue={user.id} aria-label="Řešitel">
+          <select name="assigneeIds" multiple size={3} defaultValue={[String(user.id)]} aria-label="Řešitelé">
             {users.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
               </option>
             ))}
           </select>
-          <input name="dueDate" type="date" aria-label="Termín" />
+          <input name="dueDate" type="date" aria-label="Deadline" />
           <button type="submit">Přidat úkol</button>
         </form>
       )}
@@ -47,9 +47,11 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
             <tr>
               <th>Úkol</th>
               <th>Sponzor</th>
-              <th>Termín</th>
-              <th>Řešitel</th>
+              <th>Zadáno</th>
+              <th>Deadline</th>
               <th>Zadavatel</th>
+              <th>Řešitelé</th>
+              <th>Stav</th>
               <th />
             </tr>
           </thead>
@@ -64,15 +66,32 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                     <span className="muted">–</span>
                   )}
                 </td>
+                <td className="muted">{formatDateTime(task.createdAt)}</td>
                 <td className={task.doneAt ? undefined : `due-${dueState(task.dueDate, today) ?? 'none'}`}>
                   {formatDate(task.dueDate)}
                 </td>
-                <td>{task.assigneeName}</td>
                 <td>{task.createdByName}</td>
-                <td className="num">
+                <td>{task.assigneeNames}</td>
+                <td>
                   {task.doneAt ? (
-                    <span className="muted small">hotovo {formatDateTime(task.doneAt)}</span>
+                    <span className="muted small">100 % · {formatDateTime(task.doneAt)}</span>
                   ) : (
+                    <form action={setTaskProgress.bind(null, task.id)} className="progress-form">
+                      <select name="progress" defaultValue={task.progress} aria-label="Stav v procentech">
+                        {TASK_PROGRESS_STEPS.map((step) => (
+                          <option key={step} value={step}>
+                            {step} %
+                          </option>
+                        ))}
+                      </select>
+                      <button type="submit" className="small secondary">
+                        Uložit
+                      </button>
+                    </form>
+                  )}
+                </td>
+                <td className="num">
+                  {!task.doneAt && (
                     <form action={completeTask.bind(null, task.id)}>
                       <button type="submit" className="small">
                         Hotovo

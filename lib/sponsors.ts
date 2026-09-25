@@ -1,9 +1,10 @@
 import 'server-only';
 import type { PoolClient } from 'pg';
+import type { BenefitCategory } from './catalogs';
 import { query, sqlParams } from './db';
 import type { Halere, InvoiceKind } from './money';
 import { statusKeysForSection, type SponsorListSection } from './sections';
-import type { DueFilter, Priority, SponsorCardValues } from './sponsorCard';
+import type { DueFilter, Priority, SponsorCardValues, StatusTransition } from './sponsorCard';
 
 export const SPONSOR_LIST_LIMIT = 200;
 
@@ -11,6 +12,15 @@ export type StatusRow = { id: number; key: string; name: string; color: string; 
 
 export async function listStatuses(): Promise<StatusRow[]> {
   return query<StatusRow>('select id, key, name, color, position from sponsor_statuses order by position');
+}
+
+export async function listStatusTransitions(): Promise<StatusTransition[]> {
+  return query<StatusTransition>(
+    `select f.key as "fromKey", t.key as "toKey"
+     from sponsor_status_transitions st
+     join sponsor_statuses f on f.id = st.from_status_id
+     join sponsor_statuses t on t.id = st.to_status_id`,
+  );
 }
 
 export type SponsorFilters = {
@@ -172,6 +182,7 @@ export async function updateSponsor(client: PoolClient, id: number, values: Spon
 
 export type SponsorBenefitRow = {
   id: number;
+  category: BenefitCategory;
   benefitName: string;
   seasonName: string;
   quantity: number;
@@ -180,7 +191,7 @@ export type SponsorBenefitRow = {
 
 export async function listSponsorBenefits(sponsorId: number): Promise<SponsorBenefitRow[]> {
   return query<SponsorBenefitRow>(
-    `select sb.id, b.name as "benefitName", se.name as "seasonName", sb.quantity, sb.note
+    `select sb.id, b.category, b.name as "benefitName", se.name as "seasonName", sb.quantity, sb.note
      from sponsor_benefits sb
      join benefits b on b.id = sb.benefit_id
      join seasons se on se.id = sb.season_id
@@ -200,6 +211,8 @@ export type ContractRow = {
   packageName: string | null;
   totalAmount: Halere;
   signedAt: string | null;
+  inKindDescription: string | null;
+  inKindValue: Halere;
   installments: InstallmentRow[];
 };
 
@@ -207,7 +220,8 @@ export async function listContracts(sponsorId: number): Promise<ContractRow[]> {
   const [contracts, installments] = await Promise.all([
     query<Omit<ContractRow, 'installments'>>(
       `select c.id, c.number, c.title, se.name as "seasonName", p.name as "packageName",
-              c.total_amount as "totalAmount", to_char(c.signed_at, 'YYYY-MM-DD') as "signedAt"
+              c.total_amount as "totalAmount", to_char(c.signed_at, 'YYYY-MM-DD') as "signedAt",
+              c.in_kind_description as "inKindDescription", c.in_kind_value as "inKindValue"
        from contracts c
        join seasons se on se.id = c.season_id
        left join packages p on p.id = c.package_id

@@ -2,6 +2,23 @@ import 'server-only';
 import { query } from './db';
 import type { Halere } from './money';
 
+export const BENEFIT_CATEGORIES = ['online', 'stadium', 'jerseys', 'matchday', 'vip', 'pr', 'csr'] as const;
+export type BenefitCategory = (typeof BENEFIT_CATEGORIES)[number];
+
+export const BENEFIT_CATEGORY_LABELS: Record<BenefitCategory, string> = {
+  online: 'Online',
+  stadium: 'Stadion',
+  jerseys: 'Dresy',
+  matchday: 'Matchday',
+  vip: 'VIP',
+  pr: 'PR',
+  csr: 'CSR',
+};
+
+export function parseBenefitCategory(value: unknown): BenefitCategory | null {
+  return BENEFIT_CATEGORIES.find((category) => category === value) ?? null;
+}
+
 export type SeasonRow = { id: number; name: string; startsOn: string; endsOn: string; contracts: number };
 
 export async function listSeasons(): Promise<SeasonRow[]> {
@@ -35,15 +52,25 @@ export async function listPackages(): Promise<PackageRow[]> {
   );
 }
 
-export type BenefitRow = { id: number; name: string; description: string | null; active: boolean; sponsors: number };
+export type BenefitRow = {
+  id: number;
+  category: BenefitCategory;
+  name: string;
+  description: string | null;
+  active: boolean;
+  sponsors: number;
+};
 
 export async function listBenefits(options: { activeOnly?: boolean } = {}): Promise<BenefitRow[]> {
-  return query<BenefitRow>(
-    `select b.id, b.name, b.description, b.active, count(distinct sb.sponsor_id) as sponsors
+  const rows = await query<BenefitRow>(
+    `select b.id, b.category, b.name, b.description, b.active, count(distinct sb.sponsor_id) as sponsors
      from benefits b
      left join sponsor_benefits sb on sb.benefit_id = b.id
      ${options.activeOnly ? 'where b.active' : ''}
      group by b.id
      order by b.name`,
+  );
+  return rows.sort(
+    (a, b) => BENEFIT_CATEGORIES.indexOf(a.category) - BENEFIT_CATEGORIES.indexOf(b.category),
   );
 }

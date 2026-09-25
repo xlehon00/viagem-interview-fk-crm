@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { listBenefits, listPackages, listSeasons } from '@/lib/catalogs';
+import { BENEFIT_CATEGORIES, BENEFIT_CATEGORY_LABELS, listBenefits, listPackages, listSeasons } from '@/lib/catalogs';
 import { formatDate } from '@/lib/dates';
 import { formatCzk } from '@/lib/money';
 import { CATALOGS, CATALOG_LABELS, type Catalog } from '@/lib/sections';
@@ -24,7 +24,7 @@ export default async function CatalogPage({ params, searchParams }: Props) {
   return (
     <>
       <div className="page-header">
-        <h1>Sponzoři · {CATALOG_LABELS[key]}</h1>
+        <h1>Sponzoři: {CATALOG_LABELS[key]}</h1>
       </div>
       {error && <p className="alert error">{error}</p>}
       {saved && <p className="alert success">{SAVED_MESSAGES[key]}</p>}
@@ -40,6 +40,16 @@ async function Benefits() {
   return (
     <>
       <form action={addBenefit} className="inline-form">
+        <select name="category" required defaultValue="" aria-label="Kategorie">
+          <option value="" disabled>
+            Kategorie
+          </option>
+          {BENEFIT_CATEGORIES.map((category) => (
+            <option key={category} value={category}>
+              {BENEFIT_CATEGORY_LABELS[category]}
+            </option>
+          ))}
+        </select>
         <input name="name" placeholder="Název protiplnění" required />
         <input name="description" placeholder="Popis" size={40} />
         <button type="submit">Přidat protiplnění</button>
@@ -47,6 +57,7 @@ async function Benefits() {
       <table>
         <thead>
           <tr>
+            <th>Kategorie</th>
             <th>Protiplnění</th>
             <th>Popis</th>
             <th className="num">Sponzorů</th>
@@ -56,6 +67,7 @@ async function Benefits() {
         <tbody>
           {benefits.map((benefit) => (
             <tr key={benefit.id}>
+              <td>{BENEFIT_CATEGORY_LABELS[benefit.category]}</td>
               <td>{benefit.name}</td>
               <td className="muted">{benefit.description}</td>
               <td className="num">{benefit.sponsors}</td>

@@ -17,6 +17,22 @@ export function parsePriority(value: unknown): Priority | null {
   return PRIORITIES.find((priority) => priority === number) ?? null;
 }
 
+export const INITIAL_STATUS_KEY = 'contact';
+
+export type StatusTransition = { fromKey: string; toKey: string };
+
+export function canChangeStatus(transitions: readonly StatusTransition[], fromKey: string, toKey: string): boolean {
+  return fromKey === toKey || transitions.some((item) => item.fromKey === fromKey && item.toKey === toKey);
+}
+
+export function statusOptions<T extends { key: string }>(
+  statuses: readonly T[],
+  transitions: readonly StatusTransition[],
+  currentKey: string,
+): T[] {
+  return statuses.filter((status) => canChangeStatus(transitions, currentKey, status.key));
+}
+
 export type DueState = 'overdue' | 'today' | 'upcoming';
 
 export function dueState(dueDate: string | null, today: string): DueState | null {

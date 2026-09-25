@@ -6,12 +6,20 @@ import { requireUser, type UserOption } from '@/lib/session';
 import {
   DEFAULT_PRIORITY,
   HISTORY_FIELD_LABELS,
+  INITIAL_STATUS_KEY,
   PRIORITIES,
   PRIORITY_LABELS,
   dueState,
+  statusOptions,
   type SponsorCardValues,
 } from '@/lib/sponsorCard';
-import { getSponsor, listHistory, type SponsorDetail, type StatusRow } from '@/lib/sponsors';
+import {
+  getSponsor,
+  listHistory,
+  listStatusTransitions,
+  type SponsorDetail,
+  type StatusRow,
+} from '@/lib/sponsors';
 import { createSponsor, deleteSponsor, saveSponsor } from './actions';
 import { LinkedSections } from './LinkedSections';
 
@@ -52,15 +60,16 @@ export async function SponsorModal({ detail, statuses, users, listQuery, error, 
     );
   }
 
-  const user = await requireUser();
-  const defaultStatus = statuses.find((status) => status.key === 'contact') ?? statuses[0];
+  const [user, transitions] = await Promise.all([requireUser(), listStatusTransitions()]);
+  const initialStatus = statuses.find((status) => status.key === INITIAL_STATUS_KEY) ?? statuses[0];
+  const allowedStatuses = sponsor ? statusOptions(statuses, transitions, sponsor.statusKey) : [initialStatus];
   const values: SponsorCardValues = sponsor ?? {
     name: '',
     ico: null,
     contactName: null,
     contactPhone: null,
     contactEmail: null,
-    statusId: defaultStatus.id,
+    statusId: initialStatus.id,
     priority: DEFAULT_PRIORITY,
     dueDate: null,
     assigneeId: user.id,
@@ -73,21 +82,22 @@ export async function SponsorModal({ detail, statuses, users, listQuery, error, 
       {saved && SAVED_MESSAGES[saved] && <p className="alert success">{SAVED_MESSAGES[saved]}</p>}
 
       <div className="modal-body">
-        <SponsorForm
-          sponsor={sponsor}
-          values={values}
-          statuses={statuses}
-          users={users}
-          listQuery={listQuery}
-        />
+        <div className="modal-left">
+          <SponsorForm
+            sponsor={sponsor}
+            values={values}
+            statuses={allowedStatuses}
+            users={users}
+            listQuery={listQuery}
+          />
+          {sponsor && <SponsorHistory sponsorId={sponsor.id} />}
+        </div>
         {sponsor ? (
           <LinkedSections sponsorId={sponsor.id} listQuery={listQuery} users={users} currentUserId={user.id} />
         ) : (
           <p className="muted">Protiplnění, smlouvy a úkoly půjde přidat po uložení sponzora.</p>
         )}
       </div>
-
-      {sponsor && <SponsorHistory sponsorId={sponsor.id} />}
 
       <footer className="modal-footer">
         {sponsor && !confirmDelete && (

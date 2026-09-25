@@ -37,13 +37,15 @@ insert into packages (id, season_id, name, price, description) values
   (3, 2, 'Partner mládeže', 12000000, 'Banner na turnajích mládeže, logo na webu, 2 VIP permanentky.'),
   (4, 2, 'Mantinel', 6000000, 'Reklama na mantinelu u hlavního hřiště.');
 
-insert into benefits (id, name, description) values
-  (1, 'Logo na dresu A-týmu', 'Přední strana dresu, domácí i venkovní sada.'),
-  (2, 'Banner u hlavního hřiště', 'Banner 6 × 1 m za brankou.'),
-  (3, 'Reklama na mantinelu', 'Panel 3 × 0,8 m.'),
-  (4, 'VIP permanentka', 'Vstup do VIP zóny na všechny domácí zápasy.'),
-  (5, 'Logo na webu a sociálních sítích', null),
-  (6, 'Banner na turnajích mládeže', null);
+insert into benefits (id, category, name, description) values
+  (1, 'jerseys', 'Logo na dresu A-týmu', 'Přední strana dresu, domácí i venkovní sada.'),
+  (2, 'stadium', 'Banner u hlavního hřiště', 'Banner 6 × 1 m za brankou.'),
+  (3, 'stadium', 'Reklama na mantinelu', 'Panel 3 × 0,8 m.'),
+  (4, 'vip', 'VIP permanentka', 'Vstup do VIP zóny na všechny domácí zápasy.'),
+  (5, 'online', 'Logo na webu a sociálních sítích', null),
+  (6, 'csr', 'Banner na turnajích mládeže', null),
+  (7, 'matchday', 'Hlášení v rozhlase při zápase', 'Dvakrát za zápas, o poločase a po zápase.'),
+  (8, 'pr', 'Tisková zpráva o partnerství', null);
 
 insert into sponsor_benefits (sponsor_id, benefit_id, season_id, quantity, note) values
   (1, 5, 2, 1, null),
@@ -54,11 +56,11 @@ insert into sponsor_benefits (sponsor_id, benefit_id, season_id, quantity, note)
   (3, 2, 1, 1, null),
   (3, 4, 1, 4, null);
 
-insert into contracts (id, sponsor_id, season_id, package_id, number, title, total_amount, signed_at) values
-  (1, 1, 2, 3, 'SP-2026-001', 'Partner mládeže 2026/27', 12000000, '2026-06-20'),
-  (2, 2, 2, 4, 'SP-2026-002', 'Mantinel 2026/27', 6000000, '2026-07-25'),
-  (3, 3, 1, 1, 'SP-2025-014', 'Generální partner 2025/26', 35000000, '2025-06-15'),
-  (4, 7, 1, null, 'SP-2025-009', 'Reklama na rukávu dresu 2025/26', 4000000, '2025-07-20');
+insert into contracts (id, sponsor_id, season_id, package_id, number, title, total_amount, signed_at, in_kind_description, in_kind_value) values
+  (1, 1, 2, 3, 'SP-2026-001', 'Partner mládeže 2026/27', 12000000, '2026-06-20', 'Pečivo a občerstvení na turnaje mládeže', 1500000),
+  (2, 2, 2, 4, 'SP-2026-002', 'Mantinel 2026/27', 6000000, '2026-07-25', null, 0),
+  (3, 3, 1, 1, 'SP-2025-014', 'Generální partner 2025/26', 35000000, '2025-06-15', 'Stavební materiál na opravu tribuny', 8000000),
+  (4, 7, 1, null, 'SP-2025-009', 'Reklama na rukávu dresu 2025/26', 4000000, '2025-07-20', null, 0);
 
 insert into installments (id, contract_id, due_date, amount) values
   (1, 1, '2026-07-15', 3000000),
@@ -87,12 +89,21 @@ insert into bank_payments (id, bank_ref, received_at, amount, variable_symbol, c
   (4, 'BANK-2026-07-14-0001', '2026-07-14', 3000000, '20260001', '1000000003/0300', 'PEKARNA U LIPY SRO', 'mladez 1. splatka', 1),
   (5, 'BANK-2026-09-02-0004', '2026-09-02', 3630000, '20260003', '1000000004/2010', 'AUTODOPRAVA NOVOTNY', 'mantinel 2026/27', null);
 
-insert into tasks (sponsor_id, title, due_date, assignee_id, created_by, done_at, created_at) values
-  (1, 'Domluvit focení s Pekárnou U Lípy na zápas 26. 9.', '2026-09-24', 1, 2, null, '2026-09-01 09:00+02'),
-  (3, 'Připravit návrh prodloužení smlouvy pro Stavebniny Kolář', '2026-09-30', 2, 1, null, '2026-08-28 14:30+02'),
-  (2, 'Dohledat platbu Autodopravy Novotný (nesedí částka, poslali i s DPH)', '2026-09-10', 3, 1, null, '2026-09-03 08:45+02'),
-  (4, 'Poslat smlouvu Elektro Vlček k podpisu', '2026-09-02', 1, 1, '2026-09-02 16:10+02', '2026-08-28 10:00+02'),
-  (null, 'Aktualizovat ceník reklamních ploch na sezónu 2027/28', '2026-12-15', 2, 2, null, '2026-09-01 10:00+02');
+insert into tasks (id, sponsor_id, title, due_date, created_by, progress, done_at, created_at) values
+  (1, 1, 'Domluvit focení s Pekárnou U Lípy na zápas 26. 9.', '2026-09-24', 2, 25, null, '2026-09-01 09:00+02'),
+  (2, 3, 'Připravit návrh prodloužení smlouvy pro Stavebniny Kolář', '2026-09-30', 1, 50, null, '2026-08-28 14:30+02'),
+  (3, 2, 'Dohledat platbu Autodopravy Novotný (nesedí částka, poslali i s DPH)', '2026-09-10', 1, 0, null, '2026-09-03 08:45+02'),
+  (4, 4, 'Poslat smlouvu Elektro Vlček k podpisu', '2026-09-02', 1, 100, '2026-09-02 16:10+02', '2026-08-28 10:00+02'),
+  (5, null, 'Aktualizovat ceník reklamních ploch na sezónu 2027/28', '2026-12-15', 2, 0, null, '2026-09-01 10:00+02');
+
+insert into task_assignees (task_id, user_id) values
+  (1, 1),
+  (2, 2),
+  (2, 1),
+  (3, 3),
+  (4, 1),
+  (5, 2),
+  (5, 3);
 
 insert into history (sponsor_id, user_id, field, old_value, new_value, created_at) values
   (1, 2, 'created', null, 'Pekárna U Lípy s.r.o.', '2026-05-12 10:00+02'),
@@ -104,7 +115,7 @@ insert into history (sponsor_id, user_id, field, old_value, new_value, created_a
   (4, 1, 'status', 'Čekáme na reakci', 'Podepsat smlouvy', '2026-09-02 16:05+02'),
   (4, 1, 'task', null, 'Hotovo: Poslat smlouvu Elektro Vlček k podpisu', '2026-09-02 16:10+02'),
   (5, 2, 'created', null, 'Restaurace Sokolovna', '2026-09-01 16:45+02'),
-  (6, 1, 'status', 'Domluveno', 'Zatím odmítnuto', '2026-08-20 09:30+02'),
+  (6, 1, 'status', 'Jednáme o prodloužení', 'Zatím odmítnuto', '2026-08-20 09:30+02'),
   (6, 1, 'due_date', null, '1. 3. 2027', '2026-08-20 09:30+02'),
   (7, 2, 'status', 'Jednáme o prodloužení', 'Odmítnuto', '2026-07-01 08:00+02'),
   (8, 2, 'status', 'Kontaktovat', 'Čekáme na reakci', '2026-08-31 10:40+02');
@@ -118,3 +129,4 @@ select setval(pg_get_serial_sequence('contracts', 'id'), (select max(id) from co
 select setval(pg_get_serial_sequence('installments', 'id'), (select max(id) from installments));
 select setval(pg_get_serial_sequence('invoices', 'id'), (select max(id) from invoices));
 select setval(pg_get_serial_sequence('bank_payments', 'id'), (select max(id) from bank_payments));
+select setval(pg_get_serial_sequence('tasks', 'id'), (select max(id) from tasks));

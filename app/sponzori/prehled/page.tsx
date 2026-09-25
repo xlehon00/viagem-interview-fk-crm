@@ -11,7 +11,7 @@ export default async function SponsorOverviewPage() {
   return (
     <>
       <div className="page-header">
-        <h1>Sponzoři · Přehled</h1>
+        <h1>Sponzoři: Přehled</h1>
       </div>
 
       <div className="overview-grid">

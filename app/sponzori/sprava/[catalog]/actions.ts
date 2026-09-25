@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { parseBenefitCategory } from '@/lib/catalogs';
 import { query } from '@/lib/db';
 import { FormError, parseId, readDate, readText } from '@/lib/forms';
 import { parseCzk } from '@/lib/money';
@@ -37,9 +38,14 @@ async function saveCatalogItem(catalog: Catalog, work: () => Promise<void>): Pro
 
 export async function addBenefit(form: FormData) {
   await saveCatalogItem('protiplneni', async () => {
+    const category = parseBenefitCategory(form.get('category'));
     const name = readText(form, 'name');
-    if (!name) throw new FormError('Vyplňte název protiplnění.');
-    await query('insert into benefits (name, description) values ($1, $2)', [name, readText(form, 'description')]);
+    if (!category || !name) throw new FormError('Vyplňte kategorii a název protiplnění.');
+    await query('insert into benefits (category, name, description) values ($1, $2, $3)', [
+      category,
+      name,
+      readText(form, 'description'),
+    ]);
   });
 }
 

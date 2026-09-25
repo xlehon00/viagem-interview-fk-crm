@@ -1,4 +1,4 @@
-import { listBenefits, listSeasons } from '@/lib/catalogs';
+import { BENEFIT_CATEGORIES, BENEFIT_CATEGORY_LABELS, listBenefits, listSeasons } from '@/lib/catalogs';
 import { formatDate, todayIso } from '@/lib/dates';
 import {
   INVOICE_KIND_LABELS,
@@ -45,6 +45,7 @@ export async function LinkedSections({ sponsorId, listQuery, users, currentUserI
             <tbody>
               {benefits.map((benefit) => (
                 <tr key={benefit.id}>
+                  <td className="muted">{BENEFIT_CATEGORY_LABELS[benefit.category]}</td>
                   <td>{benefit.benefitName}</td>
                   <td className="num">{benefit.quantity} ×</td>
                   <td>{benefit.seasonName}</td>
@@ -61,11 +62,19 @@ export async function LinkedSections({ sponsorId, listQuery, users, currentUserI
             <option value="" disabled>
               Protiplnění
             </option>
-            {benefitOptions.map((benefit) => (
-              <option key={benefit.id} value={benefit.id}>
-                {benefit.name}
-              </option>
-            ))}
+            {BENEFIT_CATEGORIES.map((category) => {
+              const options = benefitOptions.filter((benefit) => benefit.category === category);
+              if (options.length === 0) return null;
+              return (
+                <optgroup key={category} label={BENEFIT_CATEGORY_LABELS[category]}>
+                  {options.map((benefit) => (
+                    <option key={benefit.id} value={benefit.id}>
+                      {benefit.name}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
           </select>
           <select name="seasonId" required defaultValue={seasons[0]?.id ?? ''} aria-label="Období">
             {seasons.map((season) => (
@@ -95,6 +104,14 @@ export async function LinkedSections({ sponsorId, listQuery, users, currentUserI
                   {contract.packageName && ` · balíček ${contract.packageName}`} · {formatCzk(contract.totalAmount)} ·{' '}
                   {contract.signedAt ? `podepsáno ${formatDate(contract.signedAt)}` : 'nepodepsáno'}
                 </span>
+                {contract.inKindDescription && (
+                  <>
+                    <br />
+                    <span className="small">
+                      Věcné plnění: {contract.inKindDescription} ({formatCzk(contract.inKindValue)})
+                    </span>
+                  </>
+                )}
               </p>
               {scheduled !== contract.totalAmount && (
                 <p className="alert error">
@@ -185,7 +202,8 @@ export async function LinkedSections({ sponsorId, listQuery, users, currentUserI
                 <tr key={task.id}>
                   <td>{task.title}</td>
                   <td className={`due-${dueState(task.dueDate, today) ?? 'none'}`}>{formatDate(task.dueDate)}</td>
-                  <td>{task.assigneeName}</td>
+                  <td>{task.assigneeNames}</td>
+                  <td className="num">{task.progress} %</td>
                   <td className="num">
                     <form action={completeTask.bind(null, task.id)}>
                       <button type="submit" className="small">
@@ -202,14 +220,14 @@ export async function LinkedSections({ sponsorId, listQuery, users, currentUserI
           <input type="hidden" name="sponsorId" value={sponsorId} />
           <input type="hidden" name="listQuery" value={listQuery} />
           <input name="title" placeholder="Nový úkol" required />
-          <select name="assigneeId" defaultValue={currentUserId} aria-label="Řešitel">
+          <select name="assigneeIds" multiple size={2} defaultValue={[String(currentUserId)]} aria-label="Řešitelé">
             {users.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.name}
               </option>
             ))}
           </select>
-          <input name="dueDate" type="date" aria-label="Termín" />
+          <input name="dueDate" type="date" aria-label="Deadline" />
           <button type="submit">Přidat úkol</button>
         </form>
       </section>

@@ -61,7 +61,7 @@ export default async function SponsorsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <div className="page-header">
-        <h1>Sponzoři · {SPONSOR_SECTION_LABELS[section]}</h1>
+        <h1>Sponzoři: {SPONSOR_SECTION_LABELS[section]}</h1>
         {section === 'negotiating' && (
           <Link href={sponsorListUrl(params, { detail: 'new' })} className="button">
             Přidat sponzora
@@ -130,9 +130,11 @@ export default async function SponsorsPage({ searchParams }: { searchParams: Pro
           </thead>
           <tbody>
             {sponsors.map((sponsor) => (
-              <tr key={sponsor.id}>
+              <tr key={sponsor.id} className="clickable">
                 <td>
-                  <Link href={sponsorListUrl(params, { detail: String(sponsor.id) })}>{sponsor.name}</Link>
+                  <Link href={sponsorListUrl(params, { detail: String(sponsor.id) })} className="row-link">
+                    {sponsor.name}
+                  </Link>
                   {sponsor.ico && <div className="muted small">IČO {sponsor.ico}</div>}
                 </td>
                 <td>
