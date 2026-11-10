@@ -2,10 +2,13 @@ import 'server-only';
 import { query, sqlParams } from './db';
 import type { Halere } from './money';
 
-export const PAYMENT_STATES = ['all', 'unpaid', 'partial', 'paid', 'overdue'] as const;
-export type PaymentStateFilter = (typeof PAYMENT_STATES)[number];
+// Filtr v sekci Platby. Odlisujeme od PaymentState v lib/money.ts, ktery klasifikuje
+// jednotlivy doklad (unpaid/partial/paid/overpaid); tady je to UI-filter nad celym
+// sponzorem a ma navic `all` + `overdue`.
+export const PAYMENT_FILTERS = ['all', 'unpaid', 'partial', 'paid', 'overdue'] as const;
+export type PaymentFilter = (typeof PAYMENT_FILTERS)[number];
 
-export const PAYMENT_STATE_LABELS: Record<PaymentStateFilter, string> = {
+export const PAYMENT_FILTER_LABELS: Record<PaymentFilter, string> = {
   all: 'Vše',
   unpaid: 'Neuhrazené',
   partial: 'Částečně uhrazené',
@@ -13,14 +16,14 @@ export const PAYMENT_STATE_LABELS: Record<PaymentStateFilter, string> = {
   overdue: 'Po splatnosti',
 };
 
-export function parsePaymentState(value: string | null | undefined): PaymentStateFilter {
-  return PAYMENT_STATES.find((s) => s === value) ?? 'all';
+export function parsePaymentFilter(value: string | null | undefined): PaymentFilter {
+  return PAYMENT_FILTERS.find((s) => s === value) ?? 'all';
 }
 
 export type PaymentOverviewFilters = {
   today: string;
   search?: string;
-  state?: PaymentStateFilter;
+  state?: PaymentFilter;
   seasonId?: number;
 };
 

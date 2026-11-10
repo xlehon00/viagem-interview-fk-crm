@@ -6,9 +6,9 @@ import {
   getPaymentOverviewSummary,
   listPaymentOverview,
   listUnmatchedPayments,
-  parsePaymentState,
-  PAYMENT_STATES,
-  PAYMENT_STATE_LABELS,
+  parsePaymentFilter,
+  PAYMENT_FILTERS,
+  PAYMENT_FILTER_LABELS,
   type PaymentOverviewRow,
   type PaymentOverviewSummary,
   type UnmatchedPaymentRow,
@@ -28,7 +28,7 @@ export default async function PaymentsOverviewPage({
 }) {
   const params = await searchParams;
   const today = todayIso();
-  const state = parsePaymentState(params.state);
+  const state = parsePaymentFilter(params.state);
 
   const [rows, summary, unmatched] = await Promise.all([
     listPaymentOverview({ today, search: params.q?.trim() || undefined, state }),
@@ -47,9 +47,9 @@ export default async function PaymentsOverviewPage({
       <form method="get" className="filters">
         <input type="search" name="q" defaultValue={params.q} placeholder="Název nebo IČO sponzora" />
         <select name="state" defaultValue={state} aria-label="Stav platby">
-          {PAYMENT_STATES.map((key) => (
+          {PAYMENT_FILTERS.map((key) => (
             <option key={key} value={key}>
-              {PAYMENT_STATE_LABELS[key]}
+              {PAYMENT_FILTER_LABELS[key]}
             </option>
           ))}
         </select>
