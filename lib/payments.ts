@@ -92,52 +92,52 @@ export async function listPaymentOverview(filters: PaymentOverviewFilters): Prom
     where.push(`(s.name ilike ${like}${icoClause})`);
   }
 
+  // invoiced  = kolik jsme sponzorovi vyfakturovali k zaplaceni (vyjma storno).
+  //             credit_note se zapornou castkou snizi invoiced — reflektuje
+  //             dobropis jako korekci.
+  // paid      = kolik od nej doslo v bance. Zamerne BEZ `filter (not canceled)`:
+  //             pokud sponzor zaplatil fakturu, kterou jsme pak stornovali, ty
+  //             penize na uctu dal lezi a sponzor je po pravu ocekava zpet.
+  //             Ucetni to musi videt jako zavazek klubu, ne jako 'zmizelo'.
+  // outstanding = invoiced - paid. Zaporne -> prebytek, klub ma dluh vuci sponzorovi.
+  // overdue   = soucet (amount - paid) pres neuhrazene faktury po splatnosti.
+  //             Stornovane se zamerne vynechavaji: mrtvy doklad nemuze byt "po splatnosti".
+  const AMOUNT_NOT_CANCELED = "coalesce(sum(ip.amount) filter (where not ip.canceled), 0)";
+  const PAID = "coalesce(sum(ip.paid), 0)";
+  const OVERDUE = `coalesce(sum(ip.amount - ip.paid) filter (
+    where not ip.canceled and ip.due_date < ${today}::date
+      and ip.kind in ('proforma', 'invoice') and ip.amount > ip.paid
+  ), 0)`;
+
   const having: string[] = [];
   switch (filters.state) {
     case 'unpaid':
-      having.push('coalesce(sum(ip.amount) filter (where not ip.canceled), 0) > 0');
-      having.push('coalesce(sum(ip.paid) filter (where not ip.canceled), 0) = 0');
+      having.push(`${AMOUNT_NOT_CANCELED} > 0`);
+      having.push(`${PAID} = 0`);
       break;
     case 'partial':
-      having.push('coalesce(sum(ip.paid) filter (where not ip.canceled), 0) > 0');
-      having.push(
-        'coalesce(sum(ip.paid) filter (where not ip.canceled), 0) ' +
-          '< coalesce(sum(ip.amount) filter (where not ip.canceled), 0)',
-      );
+      having.push(`${PAID} > 0`);
+      having.push(`${PAID} < ${AMOUNT_NOT_CANCELED}`);
       break;
     case 'paid':
-      having.push('coalesce(sum(ip.amount) filter (where not ip.canceled), 0) > 0');
-      having.push(
-        'coalesce(sum(ip.paid) filter (where not ip.canceled), 0) ' +
-          '>= coalesce(sum(ip.amount) filter (where not ip.canceled), 0)',
-      );
+      having.push(`${AMOUNT_NOT_CANCELED} > 0`);
+      having.push(`${PAID} >= ${AMOUNT_NOT_CANCELED}`);
       break;
     case 'overdue':
-      having.push(
-        `coalesce(sum(ip.amount - ip.paid) filter (
-          where not ip.canceled and ip.due_date < ${today}::date
-            and ip.kind in ('proforma', 'invoice') and ip.amount > ip.paid
-        ), 0) > 0`,
-      );
+      having.push(`${OVERDUE} > 0`);
       break;
-    // 'all' / default -> ukaz jen sponzory se zaznamy (invoiced != 0 nebo paid != 0)
+    // 'all' / default -> ukaz jen sponzory se zaznamy
     default:
-      having.push(
-        'coalesce(sum(ip.amount) filter (where not ip.canceled), 0) != 0 ' +
-          'or coalesce(sum(ip.paid) filter (where not ip.canceled), 0) != 0',
-      );
+      having.push(`${AMOUNT_NOT_CANCELED} != 0 or ${PAID} != 0`);
   }
 
   const sql = `
     ${INVOICE_PAYMENTS_CTE}
     select s.id as "sponsorId", s.name as "sponsorName", s.ico,
-           coalesce(sum(ip.amount) filter (where not ip.canceled), 0)::int8 as invoiced,
-           coalesce(sum(ip.paid) filter (where not ip.canceled), 0)::int8 as paid,
-           coalesce(sum(ip.amount - ip.paid) filter (where not ip.canceled), 0)::int8 as outstanding,
-           coalesce(sum(ip.amount - ip.paid) filter (
-             where not ip.canceled and ip.due_date < ${today}::date
-               and ip.kind in ('proforma', 'invoice') and ip.amount > ip.paid
-           ), 0)::int8 as overdue,
+           ${AMOUNT_NOT_CANCELED}::int8 as invoiced,
+           ${PAID}::int8 as paid,
+           (${AMOUNT_NOT_CANCELED} - ${PAID})::int8 as outstanding,
+           ${OVERDUE}::int8 as overdue,
            to_char(min(ip.due_date) filter (
              where not ip.canceled and ip.kind in ('proforma', 'invoice')
                and ip.amount > ip.paid and ip.amount > 0
@@ -166,10 +166,13 @@ export async function getPaymentOverviewSummary(today: string): Promise<PaymentO
     overdue: Halere;
     sponsorsWithDebt: number;
   }>(
+    // Stejna pravidla jako v listPaymentOverview: paid se nefiltruje podle canceled
+    // (penize na uctu existuji bez ohledu na doklad), invoiced ano.
     `${INVOICE_PAYMENTS_CTE}
      select coalesce(sum(ip.amount) filter (where not ip.canceled), 0)::int8 as invoiced,
-            coalesce(sum(ip.paid) filter (where not ip.canceled), 0)::int8 as paid,
-            coalesce(sum(ip.amount - ip.paid) filter (where not ip.canceled), 0)::int8 as outstanding,
+            coalesce(sum(ip.paid), 0)::int8 as paid,
+            (coalesce(sum(ip.amount) filter (where not ip.canceled), 0) -
+             coalesce(sum(ip.paid), 0))::int8 as outstanding,
             coalesce(sum(ip.amount - ip.paid) filter (
               where not ip.canceled and ip.due_date < $1::date
                 and ip.kind in ('proforma', 'invoice') and ip.amount > ip.paid

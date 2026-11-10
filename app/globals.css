@@ -454,3 +454,8 @@ tr.clickable:hover {
 .pay-paid {
   color: var(--accent);
 }
+
+.pay-refund {
+  color: var(--warning);
+  font-weight: 600;
+}

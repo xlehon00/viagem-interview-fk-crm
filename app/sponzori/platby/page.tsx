@@ -162,9 +162,15 @@ function PaymentTable({ rows, today }: { rows: PaymentOverviewRow[]; today: stri
 }
 
 function PaymentStateBadge({ row }: { row: PaymentOverviewRow }) {
+  // Poradi je zamerne — overdue/overpay drzime na vrchu.
   if (row.overdue > 0) return <span className="badge pay-overdue">Po splatnosti</span>;
-  if (row.invoiced <= 0 && row.paid === 0) return <span className="badge muted">Bez dokladů</span>;
-  if (row.outstanding <= 0 && row.invoiced > 0) return <span className="badge pay-paid">Uhrazeno</span>;
+  // Zaporne outstanding = klub ma dluh vuci sponzorovi:
+  //  - dobropis bez korigujici faktury (invoiced < 0, paid = 0), nebo
+  //  - platba, ktera dosla k nasledne stornovanemu dokladu (invoiced = 0, paid > 0).
+  //  V obou pripadech ucetni musi vedet o vraceni.
+  if (row.outstanding < 0) return <span className="badge pay-refund">Přeplatek k vrácení</span>;
+  if (row.invoiced === 0 && row.paid === 0) return <span className="badge muted">Bez dokladů</span>;
+  if (row.outstanding === 0 && row.invoiced > 0) return <span className="badge pay-paid">Uhrazeno</span>;
   if (row.paid > 0 && row.outstanding > 0) return <span className="badge">Částečně</span>;
   return <span className="badge">Neuhrazeno</span>;
 }
