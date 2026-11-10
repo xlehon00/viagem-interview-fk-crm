@@ -11,6 +11,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { findMatchingInvoice } from '../lib/matching.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DATA_DIR = path.resolve(ROOT, '..', 'data');
@@ -281,12 +282,15 @@ async function importBankPayments(client) {
 }
 
 async function matchPayments(client) {
-  // Stejna logika jako app/api/cron/parovani/route.ts: VS + presna castka.
-  // Delame to tady jen pro potreby prohlizeni prehledu (aby reviewer nemusel
-  // pouštět cron).
+  // Rozhodnuti "kterou platbu k ktere fakture" pochazi z lib/matching.mjs
+  // (shared se /api/cron/parovani). Zde to delame jen pro potreby prohlizeni
+  // prehledu po db:seed:fk, aby reviewer nemusel pouštět dev server a cron.
+  // Pozn.: audit do history tabulky zapisuje cron, ne tenhle skript — seed
+  // dataset se do history vedome nepromita (importer je jedna transakce,
+  // ne provoz).
   const payments = (
     await client.query(
-      `select id, amount, variable_symbol
+      `select id, amount, variable_symbol as "variableSymbol"
        from bank_payments
        where matched_invoice_id is null and amount > 0 and variable_symbol is not null
        order by received_at, id`,
@@ -295,7 +299,7 @@ async function matchPayments(client) {
 
   const open = (
     await client.query(
-      `select id, variable_symbol, amount
+      `select id, variable_symbol as "variableSymbol", amount
        from invoices
        where kind in ('proforma', 'invoice')
          and not canceled
@@ -303,23 +307,15 @@ async function matchPayments(client) {
     )
   ).rows;
 
-  const byVs = new Map();
-  for (const inv of open) {
-    const key = `${inv.variable_symbol.trim()}:${inv.amount}`;
-    if (!byVs.has(key)) byVs.set(key, []);
-    byVs.get(key).push(inv);
-  }
-
   let matched = 0;
-  for (const p of payments) {
-    const key = `${p.variable_symbol.trim()}:${p.amount}`;
-    const candidates = byVs.get(key);
-    if (!candidates || candidates.length === 0) continue;
-    const invoice = candidates.shift();
+  for (const payment of payments) {
+    const invoice = findMatchingInvoice(payment, open);
+    if (!invoice) continue;
     await client.query(
       'update bank_payments set matched_invoice_id = $1 where id = $2 and matched_invoice_id is null',
-      [invoice.id, p.id],
+      [invoice.id, payment.id],
     );
+    open.splice(open.indexOf(invoice), 1);
     matched++;
   }
   return matched;
