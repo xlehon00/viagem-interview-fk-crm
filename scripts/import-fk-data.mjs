@@ -83,11 +83,26 @@ async function clearExisting(client) {
 
 async function importSponsors(client, sponsors) {
   // Mapa JSON id ("S001") -> DB id (serial).
+  // Pokud ma dataset dva sponzory se stejnym IC (tri pripady v data/sponsors.json:
+  // Pivovar Vesely Chmelik a.s. x a.s./, Mlekarna Bila Kravicka a.s. x akciova
+  // spolecnost, Elektro Jiskricka s.r.o. x spol. s r.o.), nejsou to dva ruzne
+  // sponzori — je to stejny subjekt vedeny v CRM 2x pod jinou variaci nazvu.
+  // Pri importu zakladame jen prvni (first-seen wins); druhy JSON id ukazuje
+  // na stejnou DB radku, aby jeho smlouvy a doklady nezustaly bez sponzora
+  // a zaroven se nerozpadly na dve platby overview.
   const map = new Map();
+  const seenIco = new Map(); // ico -> first DB id
+  const skipped = [];
   const createdBy = 1; // Jana Veselá — pevne z db/seed.sql
   const statusId = (await client.query("select id from sponsor_statuses where key = 'agreed'")).rows[0].id;
 
   for (const s of sponsors) {
+    if (s.ico && seenIco.has(s.ico)) {
+      const canonicalId = seenIco.get(s.ico);
+      map.set(s.id, canonicalId);
+      skipped.push(`${s.id} ${s.nazev} (IC ${s.ico} uz je v DB pod id ${canonicalId})`);
+      continue;
+    }
     const r = await client.query(
       `insert into sponsors (name, ico, contact_name, contact_phone, contact_email,
                              status_id, priority, created_by, note)
@@ -105,7 +120,13 @@ async function importSponsors(client, sponsors) {
         s.sidlo ?? null,
       ],
     );
-    map.set(s.id, r.rows[0].id);
+    const dbId = r.rows[0].id;
+    map.set(s.id, dbId);
+    if (s.ico) seenIco.set(s.ico, dbId);
+  }
+  if (skipped.length) {
+    console.log(`Duplicitni IC — sloucene (${skipped.length}):`);
+    for (const line of skipped) console.log(`  ${line}`);
   }
   return map;
 }
@@ -136,12 +157,14 @@ async function importContracts(client, contracts, sponsorMap) {
   }
 }
 
-async function importInvoices(client, invoices, sponsorMap) {
+async function importInvoices(client, invoices, sponsors, sponsorMap) {
   // Dvoufazove: nejdriv vsechny doklady bez vazeb, pak update odkazu na opravovany/zalohu.
+  // Mapu IC -> DB id stavime primo z inputu (JSON), nikoli N+1 SELECT per sponzor.
+  // Duplicitni IC jsou uz sloucene v sponsorMap (importSponsors first-seen wins),
+  // takze seznam IC je bez konfliktu.
   const sponsorsByIco = new Map();
-  for (const [, dbId] of sponsorMap) {
-    const r = await client.query('select ico from sponsors where id = $1', [dbId]);
-    if (r.rows[0]?.ico) sponsorsByIco.set(r.rows[0].ico, dbId);
+  for (const s of sponsors) {
+    if (s.ico) sponsorsByIco.set(s.ico, sponsorMap.get(s.id));
   }
 
   const extToDb = new Map(); // JSON id "D0001" -> DB serial
@@ -292,13 +315,17 @@ async function main() {
     await clearExisting(client);
     const sponsorMap = await importSponsors(client, sponsors);
     await importContracts(client, contracts, sponsorMap);
-    const invoiceMap = await importInvoices(client, invoices, sponsorMap);
+    const invoiceMap = await importInvoices(client, invoices, sponsors, sponsorMap);
     const payments = await importBankPayments(client);
     const matched = await matchPayments(client);
     await client.query('commit');
+    // sponsorMap.size je JSON ID -> DB ID vcetne duplicitnich JSON id (first-seen
+    // wins), sponzoru v DB je mene pokud se spojili. Vypisujeme oboji ciselne.
+    const distinctSponsors = new Set(sponsorMap.values()).size;
     console.log(
-      `Hotovo: ${sponsorMap.size} sponzoru, ${contracts.length} smluv, ` +
-        `${invoiceMap.size} dokladu, ${payments} prichozich plateb (${matched} sparovano).`,
+      `Hotovo: ${distinctSponsors} sponzoru (z ${sponsors.length} JSON zaznamu), ` +
+        `${contracts.length} smluv, ${invoiceMap.size} dokladu, ` +
+        `${payments} prichozich plateb (${matched} sparovano).`,
     );
   } catch (e) {
     await client.query('rollback').catch(() => {});
