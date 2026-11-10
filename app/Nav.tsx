@@ -69,6 +69,7 @@ export function SectionNav() {
           listItem('agreed'),
           listItem('rejected'),
           { href: '/sponzori/prehled', label: 'Přehled', active: pathname === '/sponzori/prehled' },
+          { href: '/sponzori/platby', label: 'Platby', active: pathname === '/sponzori/platby' },
           listItem('manage'),
           ...CATALOGS.map((catalog) => ({
             href: `/sponzori/sprava/${catalog}`,
