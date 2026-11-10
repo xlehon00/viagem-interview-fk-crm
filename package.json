@@ -10,7 +10,8 @@
     "test": "vitest run",
     "db:migrate": "node --env-file=.env.local scripts/migrate.mjs up",
     "db:rollback": "node --env-file=.env.local scripts/migrate.mjs down",
-    "db:seed": "node --env-file=.env.local scripts/migrate.mjs seed"
+    "db:seed": "node --env-file=.env.local scripts/migrate.mjs seed",
+    "db:seed:fk": "node --env-file=.env.local scripts/import-fk-data.mjs"
   },
   "dependencies": {
     "jose": "^6.0.11",
