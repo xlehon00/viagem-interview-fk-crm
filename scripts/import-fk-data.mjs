@@ -39,15 +39,35 @@ function parseFioAmount(s) {
 }
 
 function parseFioCsv(text) {
+  // Format Fio exportu: UTF-8 BOM + hlavickovy blok (klic;hodnota), prazdny
+  // radek, CSV hlavicka, prazdny radek na konci. Chceme srozumitelnou chybu
+  // kdyz nektera cast chybi, ne nicrikajici "Cannot read properties of
+  // undefined" nekde hluboko v loopu.
   const clean = text.replace(/^﻿/, '');
   const lines = clean.split(/\r?\n/);
+
+  // 1) preskoc hlavickovy blok
   let i = 0;
-  // preskoc hlavickovy blok (az po prvni prazdny radek)
   while (i < lines.length && lines[i].trim() !== '') i++;
+  if (i === lines.length) {
+    throw new Error('Fio CSV: ocekavan prazdny radek po hlavickovem bloku, ale soubor nema zadny prazdny radek.');
+  }
+
+  // 2) prazdny radek separator -> dalsi je CSV hlavicka
   i++;
-  // dalsi radek je CSV header
+  if (i >= lines.length || lines[i].trim() === '') {
+    throw new Error('Fio CSV: po hlavickovem bloku chybi radek s nazvy sloupcu.');
+  }
   const header = lines[i].split(';');
+  const required = ['ID pohybu', 'Datum', 'Objem', 'VS'];
+  for (const col of required) {
+    if (!header.includes(col)) {
+      throw new Error(`Fio CSV: v hlavicce chybi povinny sloupec "${col}" (mam: ${header.join(', ')}).`);
+    }
+  }
   i++;
+
+  // 3) data
   const rows = [];
   for (; i < lines.length; i++) {
     const line = lines[i];
