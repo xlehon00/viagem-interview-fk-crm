@@ -218,7 +218,12 @@ async function importInvoices(client, invoices, sponsors, sponsorMap) {
 }
 
 async function importBankPayments(client) {
+  // Oba Fio CSV exporty se casove prekryvaji (hlavni 2025-07 az 2026-06,
+  // vedlejsi 2026-05 az 2026-10). Stejny bank_ref v obou souborech se pres
+  // `on conflict (bank_ref) do nothing` ulozi jednou, ale pocet importovanych
+  // nesmi zapocitat duplicity — bereme z rowCount, ne z iteraci cyklu.
   let imported = 0;
+  let skippedDuplicate = 0;
   for (const file of CSV_FILES) {
     const text = await readFile(path.join(DATA_DIR, file), 'utf8');
     const rows = parseFioCsv(text);
@@ -229,7 +234,7 @@ async function importBankPayments(client) {
       if (amount <= 0) continue;
       const bankRef = row['ID pohybu']?.trim();
       if (!bankRef) continue;
-      await client.query(
+      const result = await client.query(
         `insert into bank_payments
            (bank_ref, received_at, amount, variable_symbol, counterparty_account,
             counterparty_name, message)
@@ -245,8 +250,12 @@ async function importBankPayments(client) {
           row['Zpráva pro příjemce']?.trim() || null,
         ],
       );
-      imported++;
+      if (result.rowCount > 0) imported++;
+      else skippedDuplicate++;
     }
+  }
+  if (skippedDuplicate) {
+    console.log(`Preskoceno ${skippedDuplicate} prekryvajicich se pohybu z CSV exportu.`);
   }
   return imported;
 }
